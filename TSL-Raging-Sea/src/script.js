@@ -12,8 +12,6 @@ import {
     modelWorldMatrix,
     cameraViewMatrix,
     cameraProjectionMatrix,
-    positionWorld,
-    positionLocal,
     varying,
     mix,
     float,
@@ -35,7 +33,7 @@ const scene = new THREE.Scene()
 /**
  * Water
  */
-const waterGeometry = new THREE.PlaneGeometry(2, 2, 1024, 1024)
+const waterGeometry = new THREE.PlaneGeometry(10, 10, 1024, 1024)
 
 const waterMaterial = new THREE.MeshBasicNodeMaterial({
     side: THREE.DoubleSide
