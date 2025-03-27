@@ -16,7 +16,7 @@ import {
 } from "three/tsl";
 
 // Debug
-const pane = new Pane({title: 'Raging Sea 😡🌊'})
+const pane = new Pane({title: 'Animated Galaxy 🌌'})
 
 /**
  * Base
