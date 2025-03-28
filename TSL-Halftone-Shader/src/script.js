@@ -4,21 +4,21 @@ import {Pane} from 'tweakpane'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {
     vec4,
-    time,
     Fn,
     vec2,
     smoothstep,
-    pow,
-    positionWorld,
     mod,
     dot,
-    cameraPosition,
-    If,
     uniform,
-    fract,
-    sin,
     normalWorld,
-    positionLocal, materialColor
+    screenCoordinate,
+    vec3,
+    distance,
+    step,
+    mul,
+    float,
+    mix,
+    assign, output
 } from "three/tsl";
 
 // Debug
@@ -48,6 +48,10 @@ window.addEventListener('resize', () =>
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
     sizes.pixelRatio = Math.min(window.devicePixelRatio, 2)
+
+    // Update Material
+    uResolution.value = new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio)
+
 
     camera.aspect = sizes.width / sizes.height
     camera.updateProjectionMatrix()
@@ -85,31 +89,96 @@ pane.addBinding(rendererParameters, 'clearColor', {label: 'Clear Color'}).on('ch
 })
 
 /**
- * Material
+ * Lights
  */
-const material = new THREE.MeshBasicNodeMaterial()
+const ambientLight = new THREE.AmbientLight(0xffffff, 3)
+scene.add(ambientLight)
 
-pane.addBinding(material, 'wireframe')
+const directionalLight = new THREE.DirectionalLight(0xffffff, 8)
+directionalLight.position.set(1, 1, 0)
+scene.add(directionalLight)
+
+/**
+ * ---------- Halftone Shader in TSL ----------
+ */
 
 debugObject.materialColor = '#ff794d'
 const uColor = uniform(new THREE.Color(debugObject.materialColor))
-pane.addBinding(debugObject, 'materialColor', {label: 'Color'}).on('change', () => {
-    uColor.value = new THREE.Color(debugObject.holographicColor)
+pane.addBinding(debugObject, 'materialColor', {label: 'Material Color'}).on('change', () => {
+    uColor.value = new THREE.Color(debugObject.materialColor)
 })
 
-/**
- * Vertex shader
- */
-material.positionNode = Fn(() => {
-    return positionLocal
-})()
+const uResolution = uniform(new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio))
+
+debugObject.shadowRepetitions = 100
+const uShadowRepetition = uniform(debugObject.shadowRepetitions)
+pane.addBinding(debugObject, 'shadowRepetitions', {label: 'Shadow Repetitions', min: 10, max: 200}).on('change', () => {
+    uShadowRepetition.value = debugObject.shadowRepetitions
+})
+
+debugObject.shadowColor = '#8e19b8'
+const uShadowColor = uniform(new THREE.Color(debugObject.shadowColor))
+pane.addBinding(debugObject, 'shadowColor', {label: 'Shadow Color'}).on('change', () => {
+    uShadowColor.value = new THREE.Color(debugObject.shadowColor)
+})
+
+debugObject.LightRepetition = 100
+const uLightRepetition = uniform(debugObject.LightRepetition)
+pane.addBinding(debugObject, 'LightRepetition', {label: 'Light Repetitions', min: 10, max: 200}).on('change', () => {
+    uLightRepetition.value = debugObject.LightRepetition
+})
+
+debugObject.lightColor = '#e5ffe0'
+const uLightColor = uniform(new THREE.Color(debugObject.lightColor))
+pane.addBinding(debugObject, 'lightColor', {label: 'Light Color'}).on('change', () => {
+    uLightColor.value = new THREE.Color(debugObject.lightColor)
+})
 
 /**
  * Fragment shader
  */
-material.fragmentNode = Fn(() => {
-    return vec4(uColor, 1.0)
-})()
+const halftone = Fn(([color, repetitions, direction, low, high]) => {
+    const intensity = dot(normalWorld, direction)
+    intensity.assign(smoothstep(low, high, intensity))
+
+    const uv = vec2(screenCoordinate.x, uResolution.y.sub(screenCoordinate.y)).toVar();
+    uv.divAssign(uResolution.y)
+    uv.mulAssign(repetitions)
+    uv.assign(mod(uv, 1.0))
+
+    const point = distance(uv, vec2(0.5))
+    point.assign(step(mul(0.5, intensity), point).oneMinus())
+
+    return vec4(color, point)
+})
+
+const halftones = Fn(([ input ]) => {
+
+    const finalColor = input
+
+    // Halftone
+    let color = halftone(uShadowColor, uShadowRepetition, vec3(0.0, -1.0, 0.0), float(-0.8), float(1.5)).toVar()
+    finalColor.rgb.assign(mix( finalColor.rgb, color.rgb, color.a ))
+
+    color.assign(halftone(uLightColor, uLightRepetition, vec3(1.0, 1.0, 0.0), float(0.5), float(1.5)))
+    finalColor.rgb.assign(mix( finalColor.rgb, color.rgb, color.a ))
+
+    return finalColor
+})
+
+/**
+ * Material
+ */
+const material = new THREE.MeshStandardNodeMaterial({
+    color: debugObject.materialColor
+})
+material.outputNode = halftones( output )
+
+/**
+ * ---------- End of TSL ----------
+ */
+
+pane.addBinding(material, 'wireframe')
 
 /**
  * Objects
@@ -128,18 +197,20 @@ const sphere = new THREE.Mesh(
 sphere.position.x = - 3
 scene.add(sphere)
 
-let suzanne = null
+let glbModel = null
 gltfLoader.load(
-    './suzanne.glb',
+    './Michelle.glb',
     (gltf) =>
     {
-        suzanne = gltf.scene
-        suzanne.traverse((child) =>
+        glbModel = gltf.scene
+        glbModel.position.y = - 2;
+        glbModel.scale.setScalar( 2.5 );
+        glbModel.traverse((child) =>
         {
             if(child.isMesh)
-                child.material = material
+                child.material.outputNode = halftones(output)
         })
-        scene.add(suzanne)
+        scene.add(glbModel)
     }
 )
 
@@ -151,12 +222,6 @@ const clock = new THREE.Clock()
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
-
-    if(suzanne)
-    {
-        suzanne.rotation.x = - elapsedTime * 0.1
-        suzanne.rotation.y = elapsedTime * 0.2
-    }
 
     sphere.rotation.x = - elapsedTime * 0.1
     sphere.rotation.y = elapsedTime * 0.2
