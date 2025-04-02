@@ -9,7 +9,10 @@ import {
     normalLocal,
     uniform,
     texture,
-    length
+    length,
+    float,
+    mix,
+    uv
 } from "three/tsl";
 
 // Debug
@@ -23,60 +26,29 @@ const canvas = document.getElementById('webgpu')
 const scene = new THREE.Scene()
 
 /**
- * Displacement
- */
-const displacement = {}
-
-// 2D canvas
-displacement.canvas = document.createElement('canvas')
-displacement.canvas.width = 128
-displacement.canvas.height = 128
-displacement.canvas.style.position = 'fixed'
-displacement.canvas.style.width = '256px'
-displacement.canvas.style.height = '256px'
-displacement.canvas.style.top = 0
-displacement.canvas.style.left = 0
-displacement.canvas.style.zIndex = 10
-document.body.append(displacement.canvas)
-
-displacement.context = displacement.canvas.getContext('2d')
-displacement.context.fillRect(0, 0, displacement.canvas.width, displacement.canvas.height)
-
-displacement.glowImage = new Image()
-displacement.glowImage.src = './glow.png'
-
-// Interactive plane
-displacement.interactivePlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(12, 12),
-    new THREE.MeshBasicMaterial({ color: 'red', side: THREE.DoubleSide})
-)
-displacement.interactivePlane.position.z = 1
-// displacement.interactivePlane.visible = false
-scene.add(displacement.interactivePlane)
-
-// Raycaster
-displacement.raycaster = new THREE.Raycaster()
-// Coordinates
-displacement.screenCursor = new THREE.Vector2(9999, 9999)
-displacement.canvasCursor = new THREE.Vector2(9999, 9999)
-
-// Textures
-displacement.texture = new THREE.CanvasTexture(displacement.canvas)
-
-
-/**
  * Ball mesh
  */
-const geometry = new THREE.SphereGeometry(0.5, 32, 32)
+const ballGeometry = new THREE.SphereGeometry(0.5, 32, 32)
 
-const material = new THREE.MeshBasicNodeMaterial({
-    color: '#ffffff',
+const ballMaterial = new THREE.MeshStandardNodeMaterial({
 })
+const sphere = new THREE.Mesh(ballGeometry, ballMaterial)
 
-material.positionNode
+/**
+ * Plane mesh
+ */
+const coneGeometry = new THREE.ConeGeometry(0.5, 1.5, 32)
+const coneMaterial = new THREE.MeshStandardNodeMaterial({
+    color: '#ff6030'
+})
+const cone = new THREE.Mesh(coneGeometry, coneMaterial)
+cone.position.y = 0.75
 
-const mesh = new THREE.Mesh(geometry, material)
-scene.add(mesh)
+const ball = new THREE.Group()
+ball.add(sphere)
+ball.add(cone)
+
+scene.add(ball)
 
 /**
  * Sizes
@@ -102,8 +74,15 @@ window.addEventListener('resize', () =>
  * Camera
  */
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, -0, -10)
+camera.position.set(0, 0, 10)
 scene.add(camera)
+
+/**
+ * SpotLight
+ */
+const spotLight = new THREE.SpotLight(0xffffff, 50)
+spotLight.position.set(0, 0, 10)
+scene.add(spotLight)
 
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
@@ -137,40 +116,17 @@ const tick = async () =>
     const elapsedTime = clock.getElapsedTime()
 
     // Update ball
-    mesh.position.y = Math.sin(elapsedTime) * 5
-    mesh.position.x = Math.cos(elapsedTime) * 5
-
-    /**
-     * Raycaster
-     */
-    displacement.raycaster.set(mesh.position, new THREE.Vector3(0, 0, 1))
-    const intersections = displacement.raycaster.intersectObject(displacement.interactivePlane)
-
-    if(intersections.length)
-    {
-        const uv = intersections[0].uv
-        displacement.canvasCursor.x = (1 - uv.x) * displacement.canvas.width
-        displacement.canvasCursor.y = (1 - uv.y) * displacement.canvas.height
+    const speeds = {
+        x: Math.cos(elapsedTime) * 5,
+        y: Math.sin(elapsedTime) * 5
     }
+    console.log(speeds)
 
-    // Fade out
-    displacement.context.globalCompositeOperation = 'source-over'
-    displacement.context.globalAlpha = 0.05
-    displacement.context.fillRect(0, 0, displacement.canvas.width, displacement.canvas.height)
+    // ball.position.x = speeds.x
+    // ball.position.y = speeds.y
 
-    // Draw glow
-    const glowSize = displacement.context.canvas.width * 0.25
-    displacement.context.globalAlpha = 1
-    displacement.context.globalCompositeOperation = 'lighten'
-    displacement.context.drawImage(
-        displacement.glowImage,
-        displacement.canvasCursor.x - (glowSize * 0.5),
-        displacement.canvasCursor.y - (glowSize * 0.5),
-        glowSize,
-        glowSize
-    )
 
-    displacement.texture.needsUpdate = true
+    spotLight.position.set(camera.position.x, camera.position.y, camera.position.z)
 
     renderer.renderAsync(scene, camera)
 
