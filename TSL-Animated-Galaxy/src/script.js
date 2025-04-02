@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {Pane} from 'tweakpane'
 import {
+    Fn,
     vec3,
     sin,
     uniform,
@@ -12,7 +13,7 @@ import {
     range,
     PI2,
     cos,
-    uv,
+    uv, varying,
 } from "three/tsl";
 
 // Debug
@@ -58,49 +59,56 @@ material = new THREE.SpriteNodeMaterial({
  */
 
 
+const radiusRatio = varying(float(0))
+
 /**
  * Calculate the position of the plane
  */
+material.positionNode = Fn(() => {
+    // We set a scale for each plane
+    material.scaleNode = range(0, 1).mul(size)
 
-// We set a scale for each plane
-material.scaleNode = range(0, 1).mul(size)
+    // We get a random value between 0 and 1 for each plane
+    radiusRatio.assign(range(0, 1))
+    // We place the plane at a random position on the radius/branch
+    const newRadius = radiusRatio.pow(randomnessPower).mul(radius).toVar()
 
-// We get a random value between 0 and 1 for each plane
-const radiusRatio = range(0, 1).toVar()
-// We place the plane at a random position on the radius/branch
-const newRadius = radiusRatio.pow(randomnessPower).mul(radius).toVar()
+    // We choose which branch the plane is on
+    const branchAngle = range(0, branches).floor().mul(PI2.div(branches)).toVar()
+    // We rotate the plan on its branch over time, we multiplie the time to make sure that the outer planes rotate slower
+    // This creates the spiral effect
+    const angle = branchAngle.add( time.mul(radiusRatio.oneMinus())).toVar()
 
-// We choose which branch the plane is on
-const branchAngle = range(0, branches).floor().mul(PI2.div(branches)).toVar()
-// We rotate the plan on its branch over time, we multiplie the time to make sure that the outer planes rotate slower
-// This creates the spiral effect
-const angle = branchAngle.add( time.mul(radiusRatio.oneMinus())).toVar()
+    // We create the new position of the plane on the branch
+    const position = vec3(sin(angle), 0, cos(angle)).mul(newRadius).toVar()
 
-// We create the new position of the plane on the branch
-const position = vec3(sin(angle), 0, cos(angle)).mul(newRadius).toVar()
+    // We add some randomness to the position
+    const randomOffset = range(vec3(-1), vec3(1)).pow(3).mul(radiusRatio).toVar()
 
-// We add some randomness to the position
-const randomOffset = range(vec3(-1), vec3(1)).pow(3).mul(radiusRatio).toVar()
-
-material.positionNode = position.add(randomOffset)
+    return position.add(randomOffset)
+})()
 
 /**
  * Calculate the color of the plane
  */
 
-const colorInside = uniform( new THREE.Color( parameters.insideColor ) );
-const colorOutside = uniform( new THREE.Color( parameters.outsideColor ) );
 
-// We interpolate the color between the inside and the outside of the galaxy
-const colorFinal = mix(colorInside, colorOutside, radiusRatio.pow(inOutLimit)).toVar()
+material.colorNode = Fn(() => {
+    const colorInside = uniform( new THREE.Color( parameters.insideColor ) );
+    const colorOutside = uniform( new THREE.Color( parameters.outsideColor ) );
 
-const alpha = float(0.1) // We lower the intensity to make the plane mor transparent
-    .div(uv().sub(0.5).length()) // We take the uv coordinates, we center them around 0, we then calculate the distance from the center
-                                // This makes the center (where length() is smallest) brighter (high alpha), while edges (where length() is large) dimmer
-    .sub(0.4) // We remove 0.2 so that areas where 0.1 / length() is less than 0.2 become completely transparent
-    .sub(0.4) // We remove 0.2 so that areas where 0.1 / length() is less than 0.2 become completely transparent
+    // We interpolate the color between the inside and the outside of the galaxy
+    const colorFinal = mix(colorInside, colorOutside, radiusRatio.pow(inOutLimit)).toVar()
 
-material.colorNode = vec4(colorFinal, alpha)
+    const alpha = float(0.1) // We lower the intensity to make the plane mor transparent
+        .div(uv().sub(0.5).length()) // We take the uv coordinates, we center them around 0, we then calculate the distance from the center
+        // This makes the center (where length() is smallest) brighter (high alpha), while edges (where length() is large) dimmer
+        .sub(0.4) // We remove 0.2 so that areas where 0.1 / length() is less than 0.2 become completely transparent
+        .sub(0.4) // We remove 0.2 so that areas where 0.1 / length() is less than 0.2 become completely transparent
+
+    return vec4(colorFinal, alpha)
+})()
+
 
 /**
  * --------- End of TSL ---------
