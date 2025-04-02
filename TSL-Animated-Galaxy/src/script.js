@@ -92,11 +92,10 @@ material.positionNode = Fn(() => {
  * Calculate the color of the plane
  */
 
+const colorInside = uniform( new THREE.Color( parameters.insideColor ) );
+const colorOutside = uniform( new THREE.Color( parameters.outsideColor ) );
 
 material.colorNode = Fn(() => {
-    const colorInside = uniform( new THREE.Color( parameters.insideColor ) );
-    const colorOutside = uniform( new THREE.Color( parameters.outsideColor ) );
-
     // We interpolate the color between the inside and the outside of the galaxy
     const colorFinal = mix(colorInside, colorOutside, radiusRatio.pow(inOutLimit)).toVar()
 
