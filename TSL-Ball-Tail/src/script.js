@@ -25,7 +25,7 @@ import {
     acos,
     mat4,
     clamp,
-    If, sin, cos
+    If, sin, cos, min, normalize, dot, cameraProjectionMatrix, add
 } from "three/tsl";
 import * as rotationMatrix from "three/tsl";
 
@@ -52,7 +52,8 @@ const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
  * Tail
  */
 const subdivisions = 16
-const tailGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 4, subdivisions, true)
+const tailGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 8, subdivisions, true)
+tailGeometry.translate(0, 1, 0)
 
 const tailMaterial = new THREE.MeshBasicNodeMaterial({ wireframe: true })
 
@@ -70,25 +71,30 @@ positionTexture.needsUpdate = true;
 tailMaterial.positionNode = Fn(() => {
     // Ratio
     const ratio = positionGeometry.x.oneMinus()
-
-    // Trail data
-    const trailData = texture(positionTexture, vec2(ratio, 0.5)).toVar()
-    const trailPosition = trailData.xyz
-
-    // Direction
-    const nextPosition = texture(positionTexture, vec2(ratio.add(subdivisions), 0.5)).xyz
-    const direction = nextPosition.sub(trailPosition).normalize().toVar()
-
-    // Rotated position
-    const basePosition = vec3(positionGeometry.x, positionGeometry.y, 0)
-    const rotatedPoint = rotationMatrix.mul(direction).mul(basePosition).toVar()
-
-    // Normal
-    const customNormal = modelViewMatrix.mul(vec4(rotationMatrix.mul(attribute('normal')), 0))
+const sampleTexture = Fn(([t]) => {
+    return texture(positionTexture, vec2(t, 0.5)).rgb
+})
 
 
-    return trailPosition.add(rotatedPoint)
+tailMaterial.vertexNode = Fn(() => {
+    const t = uv().y.toVar()
 
+    const posSample = sampleTexture(t).toVar()
+
+    const delta = float(1.0).div(subdivisions).toVar()
+
+    const posNext = sampleTexture(min(t.add(delta), float(1.0))).toVar()
+    const tangent = posNext.sub(posSample).normalize()
+
+    const up = vec3(0, 1, 0).toVar()
+    const normal = normalize(up.sub(dot(up, tangent).mul(tangent))).toVar()
+    const binormal = cross(tangent, normal).toVar()
+
+    const localPos = positionGeometry.toVar()
+    const rotatedPos = localPos.x.mul(normal).add(localPos.y.mul(tangent)).add(localPos.z.mul(binormal)).toVar()
+
+
+    return cameraProjectionMatrix.mul(modelViewMatrix).mul(vec4(posSample.add(rotatedPos), 1.0))
 })().debug((t) => {
     console.log(t)
 })
@@ -160,7 +166,7 @@ window.addEventListener('keyup', (event) => {
  * Camera
  */
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, 0, 10)
+camera.position.set(0, 10, 0)
 scene.add(camera)
 
 const controls = new OrbitControls(camera, canvas)
@@ -198,10 +204,10 @@ const tick = async () =>
 
     // Update sphere
     if (keysdown[0]) {
-        sphere.position.y += 0.35
+        sphere.position.z -= 0.35
     }
     if (keysdown[1]) {
-        sphere.position.y -= 0.35
+        sphere.position.z += 0.35
     }
     if (keysdown[2]) {
         sphere.position.x -= 0.35
@@ -209,8 +215,6 @@ const tick = async () =>
     if (keysdown[3]) {
         sphere.position.x += 0.35
     }
-
-    console.log(sphere.position)
 
     // Update tail
     if (keysdown[0] || keysdown[1] || keysdown[2] || keysdown[3]) {
