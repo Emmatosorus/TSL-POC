@@ -68,9 +68,6 @@ const positionTexture = new THREE.DataTexture(
 )
 positionTexture.needsUpdate = true;
 
-tailMaterial.positionNode = Fn(() => {
-    // Ratio
-    const ratio = positionGeometry.x.oneMinus()
 const sampleTexture = Fn(([t]) => {
     return texture(positionTexture, vec2(t, 0.5)).rgb
 })
