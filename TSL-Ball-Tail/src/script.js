@@ -25,7 +25,7 @@ import {
     acos,
     mat4,
     clamp,
-    If, sin, cos, min, normalize, dot, cameraProjectionMatrix, add
+    If, sin, cos, min, normalize, dot, cameraProjectionMatrix, add, max, smoothstep
 } from "three/tsl";
 import * as rotationMatrix from "three/tsl";
 
@@ -40,22 +40,26 @@ const canvas = document.getElementById('webgpu')
 const scene = new THREE.Scene()
 
 /**
- * Sphere
+ * ball
  */
-const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32)
+const Geometry = new THREE.SphereGeometry(0.5, 32, 32)
 
-const sphereMaterial = new THREE.MeshBasicNodeMaterial({
+const Material = new THREE.MeshBasicNodeMaterial({
 })
-const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
+const ball = new THREE.Mesh(Geometry, Material)
 
 /**
  * Tail
  */
 const subdivisions = 16
-const tailGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 8, subdivisions, true)
+const tailGeometry = new THREE.CylinderGeometry(0.0, 0.5, 2, 8, subdivisions, true)
 tailGeometry.translate(0, 1, 0)
 
-const tailMaterial = new THREE.MeshBasicNodeMaterial({ wireframe: true })
+const tailMaterial = new THREE.MeshBasicNodeMaterial({
+    wireframe: false,
+    transparent: true,
+})
+pane.addBinding(tailMaterial, 'wireframe', {label: 'Wireframe'})
 
 const ballPositions = new Float32Array(subdivisions * 4)
 
@@ -71,7 +75,6 @@ positionTexture.needsUpdate = true;
 const sampleTexture = Fn(([t]) => {
     return texture(positionTexture, vec2(t, 0.5)).rgb
 })
-
 
 tailMaterial.vertexNode = Fn(() => {
     const t = uv().y.toVar()
@@ -96,16 +99,23 @@ tailMaterial.vertexNode = Fn(() => {
     console.log(t)
 })
 
+tailMaterial.fragmentNode = Fn(() => {
+
+    const alpha = float(1.0).mul(uv().y.oneMinus()).toVar()
+
+    alpha.mulAssign(smoothstep(1.0, 0.1, uv().y))
+
+    return vec4(0.0, 1.0, 1.0, alpha)
+})().debug((t) => {
+    console.log(t)
+})
+
 const tail = new THREE.Mesh(tailGeometry, tailMaterial)
 
-/**
- * Ball Group
- */
-const ball = new THREE.Group()
-ball.add(sphere)
-ball.add(tail)
-
-scene.add(ball)
+const all = new THREE.Group()
+all.add(ball)
+all.add(tail)
+scene.add(all)
 
 /**
  * Sizes
