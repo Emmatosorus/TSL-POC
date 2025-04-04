@@ -4,34 +4,24 @@ import {OrbitControls} from "three/addons";
 import {
     Fn,
     vec2,
-    positionLocal,
     positionGeometry,
-    normalLocal,
     uniform,
     texture,
-    length,
     float,
-    mix,
     uv,
-    positionWorld,
-    remapClamp,
-    abs,
-    normalWorld,
-    attribute,
     vec3,
     modelViewMatrix,
     vec4,
     cross,
-    acos,
-    mat4,
-    clamp,
-    If, sin, cos, min, normalize, dot, cameraProjectionMatrix, add, max, smoothstep
+    min,
+    normalize,
+    dot,
+    cameraProjectionMatrix,
+    smoothstep
 } from "three/tsl";
-import * as rotationMatrix from "three/tsl";
 
 // Debug
 const pane = new Pane({title: 'Ball Tail'})
-
 
 /**
  * Base
@@ -42,17 +32,19 @@ const scene = new THREE.Scene()
 /**
  * ball
  */
-const Geometry = new THREE.SphereGeometry(0.5, 32, 32)
+const ballGeometry = new THREE.SphereGeometry(0.5, 32, 32)
 
-const Material = new THREE.MeshBasicNodeMaterial({
-})
-const ball = new THREE.Mesh(Geometry, Material)
+const ballMaterial = new THREE.MeshBasicNodeMaterial()
+
+
+
+const ball = new THREE.Mesh(ballGeometry, ballMaterial)
 
 /**
  * Tail
  */
 const subdivisions = 16
-const tailGeometry = new THREE.CylinderGeometry(0.0, 0.5, 2, 8, subdivisions, true)
+const tailGeometry = new THREE.CylinderGeometry(-0.5, 0.5, 2, 8, subdivisions, true)
 tailGeometry.translate(0, 1, 0)
 
 const tailMaterial = new THREE.MeshBasicNodeMaterial({
@@ -99,13 +91,19 @@ tailMaterial.vertexNode = Fn(() => {
     console.log(t)
 })
 
+const uColor = uniform(new THREE.Color('#00ffff'))
+
+pane.addBinding({color : '#00ffff'}, 'color', {label: 'Color'}).on('change', (ev) => {
+    uColor.value.set(ev.value)
+})
+
 tailMaterial.fragmentNode = Fn(() => {
 
     const alpha = float(1.0).mul(uv().y.oneMinus()).toVar()
 
-    alpha.mulAssign(smoothstep(1.0, 0.1, uv().y))
+    alpha.mulAssign(smoothstep(8.0, 0.1, uv().y.mul(20)))
 
-    return vec4(0.0, 1.0, 1.0, alpha)
+    return vec4(uColor, alpha)
 })().debug((t) => {
     console.log(t)
 })
@@ -202,6 +200,13 @@ pane.addBinding(rendererParameters, 'clearColor', {label: 'Clear Color'}).on('ch
  */
 const clock = new THREE.Clock()
 
+const ballDir = {
+    x: 0.35,
+    z: 0.35,
+}
+all.position.set(1, 0, 1)
+
+
 const positions = []
 const tick = async () =>
 {
@@ -210,22 +215,24 @@ const tick = async () =>
     const elapsedTime = clock.getElapsedTime()
 
     // Update sphere
+    // ball.position.x = Math.sin(elapsedTime) * 5
+    // ball.position.z = Math.cos(elapsedTime) * 5
+
     if (keysdown[0]) {
-        sphere.position.z -= 0.35
+        ball.position.z -= 0.35
     }
     if (keysdown[1]) {
-        sphere.position.z += 0.35
+        ball.position.z += 0.35
     }
     if (keysdown[2]) {
-        sphere.position.x -= 0.35
+        ball.position.x -= 0.35
     }
     if (keysdown[3]) {
-        sphere.position.x += 0.35
+        ball.position.x += 0.35
     }
 
     // Update tail
-    if (keysdown[0] || keysdown[1] || keysdown[2] || keysdown[3]) {
-        positions.unshift(sphere.position.x, sphere.position.y, sphere.position.z, 1.0)
+        positions.unshift(ball.position.x, ball.position.y, ball.position.z, 1.0)
         if (positions.length > subdivisions * 4) {
             positions.pop()
             positions.pop()
@@ -234,8 +241,6 @@ const tick = async () =>
         }
         ballPositions.set(positions)
         positionTexture.needsUpdate = true;
-    }
-
 
     renderer.renderAsync(scene, camera)
 
