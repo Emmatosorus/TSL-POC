@@ -50,6 +50,7 @@ tailGeometry.translate(0, 1, 0)
 const tailMaterial = new THREE.MeshBasicNodeMaterial({
     wireframe: false,
     transparent: true,
+    side: THREE.DoubleSide,
 })
 pane.addBinding(tailMaterial, 'wireframe', {label: 'Wireframe'})
 
@@ -200,12 +201,7 @@ pane.addBinding(rendererParameters, 'clearColor', {label: 'Clear Color'}).on('ch
  */
 const clock = new THREE.Clock()
 
-const ballDir = {
-    x: 0.35,
-    z: 0.35,
-}
 all.position.set(1, 0, 1)
-
 
 const positions = []
 const tick = async () =>
