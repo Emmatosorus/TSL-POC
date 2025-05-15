@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu'
 import {Pane} from 'tweakpane'
-import {OrbitControls} from "three/addons";
+import {OrbitControls} from "three/addons"
 import {
     Fn,
     vec2,
@@ -11,10 +11,10 @@ import {
     uniform,
     texture,
     length
-} from "three/tsl";
+} from "three/tsl"
 
 // Debug
-const pane = new Pane({title: '🌎 Planet 🌎'})
+const pane = new Pane({title: '🌎 Perlin Planet 🌎'})
 
 
 /**
@@ -77,9 +77,7 @@ const posFunc = Fn(() => {
 
     const displacement = noise.mul(amplitude);
 
-    const newPosition = originalPos.add(normalLocal.mul(displacement));
-
-    return newPosition;
+    return originalPos.add(normalLocal.mul(displacement));
 });
 
 material.positionNode = posFunc()
