@@ -102,6 +102,18 @@ const textures = [
     textureLoader.load('./particles/8.png')
 ]
 
+const calculateScale = Fn(([progress]) => {
+    const sizeOpeningProgress = remapClamp(progress, 0.0, 0.125, 0.0, 1.0).toVar()
+    const sizeClosingProgress = remapClamp(progress, 0.125, 1.0, 1.0, 0.0).toVar()
+    return min(sizeOpeningProgress, sizeClosingProgress)
+
+})
+
+const calculateTwinkle = Fn(([progress]) => {
+    const twinkleProgress = remapClamp(progress, 0.2, 0.8, 0.0, 1.0).toConst()
+    return sin(progress.mul(30)).mul(0.5).add(0.5).mul(twinkleProgress).oneMinus()
+})
+
 const createFirework = (count, position, size, textureParam, radius, color) => {
     // Geometry
     const geometry = new THREE.PlaneGeometry(0.02, 0.02)
@@ -154,11 +166,8 @@ const createFirework = (count, position, size, textureParam, radius, color) => {
         /**
          * We have to estimate the size of the particles to make them disappear
          */
-        const sizeOpeningProgress = remapClamp(progress, 0.0, 0.125, 0.0, 1.0).toVar()
-        const sizeClosingProgress = remapClamp(progress, 0.125, 1.0, 1.0, 0.0).toVar()
-        const sizeProgress = min(sizeOpeningProgress, sizeClosingProgress).toVar()
-        const twinkleProgress = remapClamp(progress, 0.2, 0.8, 0.0, 1.0).toVar()
-        const twinkleSize = sin(progress.mul(30)).mul(0.5).add(0.5).mul(twinkleProgress).oneMinus().toVar()
+        const sizeProgress = calculateScale(progress).toVar()
+        const twinkleSize = calculateTwinkle(progress).toVar()
 
         const approximateSize = sizeProgress.mul(twinkleSize).toVar()
 
@@ -173,14 +182,8 @@ const createFirework = (count, position, size, textureParam, radius, color) => {
     material.scaleNode = Fn(() => {
         const progress = uProgress.mul(float(1.0).add(range(0, 1))).toVar()
 
-        // Scaling
-        const sizeOpeningProgress = remapClamp(progress, 0.0, 0.125, 0.0, 1.0).toVar()
-        const sizeClosingProgress = remapClamp(progress, 0.125, 1.0, 1.0, 0.0).toVar()
-        const sizeProgress = min(sizeOpeningProgress, sizeClosingProgress).toVar()
-
-        // Twinckling
-        const twinkleProgress = remapClamp(progress, 0.2, 0.8, 0.0, 1.0).toVar()
-        const twinkleSize = sin(progress.mul(30)).mul(0.5).add(0.5).mul(twinkleProgress).oneMinus().toVar()
+        const sizeProgress = calculateScale(progress).toVar()
+        const twinkleSize = calculateTwinkle(progress).toVar()
 
         const pointSize = uSize.mul(uResolution.y).mul(range(0, 1)).mul(sizeProgress).mul(twinkleSize).toVar()
 
