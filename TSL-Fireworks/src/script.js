@@ -1,5 +1,4 @@
 import * as THREE from 'three/webgpu'
-import gsap from 'gsap'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js';
 import {Pane} from 'tweakpane'
@@ -24,7 +23,6 @@ import {
     remapClamp,
     pow,
     min,
-    varying
 } from "three/tsl";
 
 // Debug
@@ -109,7 +107,7 @@ const createFirework = (count, position, size, textureParam, radius, color) => {
     const geometry = new THREE.PlaneGeometry(0.02, 0.02)
 
     // Material
-    const material = new THREE.SpriteMaterial({
+    const material = new THREE.SpriteNodeMaterial({
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
@@ -166,9 +164,7 @@ const createFirework = (count, position, size, textureParam, radius, color) => {
 
         const disappearFactor = step(0.1, approximateSize).toVar()
 
-        const finalPosition = mix(vec3(9999.0, 9999.0, 9999.0), newPosition, disappearFactor).toVar()
-
-        return finalPosition
+        return mix(vec3(9999.0, 9999.0, 9999.0), newPosition, disappearFactor)
     })()
 
     const uSize = uniform(size)
@@ -222,10 +218,24 @@ const createFirework = (count, position, size, textureParam, radius, color) => {
         material.dispose()
     }
 
-    gsap.to(
-        uProgress,
-        { value: 1, duration: 3, ease: 'linear', onComplete: detroyFirework }
-    )
+    const animateFirework = (uProgress, duration, onComplete) => {
+        const start = performance.now()
+
+        function update(now) {
+            const elapsed = now - start
+            const progress = Math.min(elapsed / duration, 1)
+            uProgress.value = progress
+
+            if (progress < 1) {
+                requestAnimationFrame(update)
+            } else if (onComplete) {
+                onComplete()
+            }
+        }
+
+        requestAnimationFrame(update)
+    }
+    animateFirework(uProgress, 3000, detroyFirework)
 }
 
 const createRandomFirework = () => {
