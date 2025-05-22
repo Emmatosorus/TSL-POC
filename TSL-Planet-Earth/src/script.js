@@ -34,14 +34,19 @@ const scene = new THREE.Scene()
 /**
  * Textures
  */
-const textureMap = new THREE.TextureLoader().load('earth.jpg');
-textureMap.colorSpace = THREE.SRGBColorSpace
+const textureLoader = new THREE.TextureLoader();
+
+const earthTextureMap = textureLoader.load('earth.jpg');
+earthTextureMap.colorSpace = THREE.SRGBColorSpace
+
+const moonTextureMap = textureLoader.load('moon.jpg');
+moonTextureMap.colorSpace = THREE.SRGBColorSpace
 
 /**
  * Earth material and geometry
  */
 const earthGeometry = new THREE.SphereGeometry(1, 32, 32);
-const earthMaterial = new THREE.MeshNormalMaterial();
+const earthMaterial = new THREE.MeshBasicNodeMaterial();
 
 /**
  * ----------- Planet Earth in TSL -----------
@@ -49,7 +54,7 @@ const earthMaterial = new THREE.MeshNormalMaterial();
 
 const earthColor = uniform(new THREE.Color(debugParams.earthColor))
 
-earthMaterial.fragmentNode = texture(textureMap, uv()).mul(color(earthColor))
+earthMaterial.fragmentNode = texture(earthTextureMap, uv()).mul(color(earthColor))
 
 /**
  * ----------- End of TSL -----------
@@ -164,6 +169,21 @@ window.addEventListener('resize', () =>
  * Debug
  */
 const earthDebug = pane.addFolder({title: 'Earth'})
+earthDebug.addBinding({moon: false}, 'moon', {label: 'Switch to Moon'}).on('change', (event) => {
+    if (event.value) {
+        earthColor.value = new THREE.Color(0xffffff)
+        atmosphereColor.value = new THREE.Color(0xffffff)
+        earth.material.fragmentNode = texture(moonTextureMap, uv()).mul(color(earthColor))
+        earth.material.needsUpdate = true
+    }
+    else {
+        earthColor.value = new THREE.Color(debugParams.earthColor)
+        atmosphereColor.value = new THREE.Color(debugParams.atmoshpereColor)
+        earth.material.fragmentNode = texture(earthTextureMap, uv()).mul(color(earthColor))
+        earth.material.needsUpdate = true
+    }
+})
+
 earthDebug.addBinding(debugParams, 'earthColor', {label: 'Color'}).on('change', (event) => {
     earthColor.value = new THREE.Color(event.value)
 })
