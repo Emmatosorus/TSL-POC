@@ -77,7 +77,7 @@ material.positionNode = Fn(() => {
     const branchAngle = range(0, branches).floor().mul(PI2.div(branches)).toVar()
     // We rotate the plan on its branch over time, we multiplie the time to make sure that the outer planes rotate slower
     // This creates the spiral effect
-    const angle = branchAngle.add( time.mul(radiusRatio.oneMinus())).toVar()
+    const angle = branchAngle.add( float(10).mul(radiusRatio.oneMinus())).add(time.mul(0.05)).toVar()
 
     // We create the new position of the plane on the branch
     const position = vec3(sin(angle), 0, cos(angle)).mul(newRadius).toVar()
