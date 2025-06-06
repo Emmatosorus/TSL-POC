@@ -107,7 +107,6 @@ pane.addBinding(rendererParameters, 'clearColor', {label: 'Clear Color'}).on('ch
 
 /**
  * Material
- * Material
  */
 const material = new MeshBasicNodeMaterial({
     side: DoubleSide,
@@ -274,6 +273,7 @@ DirLight1.addBinding(debugObject, 'directionalLight1Color', {label: 'Directional
 DirLight1.addBinding(debugObject, 'directionalLight1Position', {label: 'Directional Light 1 Position'}).on('change', (event) => {
     DirLight1Position.value = new Vector3(event.value.x, event.value.y, event.value.z)
     directionalLightHelper1.position.set(event.value.x, event.value.y, event.value.z)
+    directionalLightHelper1.lookAt(0, 0, 0)
 })
 
 DirLight1.addBinding(debugObject, 'directionalLight1Intensity', {label: 'Directional Light 1 Intensity', min: 0.0}).on('change', (event) => {
@@ -289,6 +289,7 @@ DirLight2.addBinding(debugObject, 'directionalLight2Color', {label: 'Directional
 DirLight2.addBinding(debugObject, 'directionalLight2Position', {label: 'Directional Light 2 Position'}).on('change', (event) => {
     DirLight2Position.value = new Vector3(event.value.x, event.value.y, event.value.z)
     directionalLightHelper2.position.set(event.value.x, event.value.y, event.value.z)
+    directionalLightHelper2.lookAt(0, 0, 0)
 })
 
 DirLight2.addBinding(debugObject, 'directionalLight2Intensity', {label: 'Directional Light 2 Intensity', min: 0.0}).on('change', (event) => {
@@ -304,6 +305,7 @@ DirLight3.addBinding(debugObject, 'directionalLight3Color', {label: 'Directional
 DirLight3.addBinding(debugObject, 'directionalLight3Position', {label: 'Directional Light 3 Position'}).on('change', (event) => {
     DirLight3Position.value = new Vector3(event.value.x, event.value.y, event.value.z)
     directionalLightHelper3.position.set(event.value.x, event.value.y, event.value.z)
+    directionalLightHelper3.lookAt(0, 0, 0)
 })
 
 DirLight3.addBinding(debugObject, 'directionalLight3Intensity', {label: 'Directional Light 3 Intensity', min: 0.0}).on('change', (event) => {
