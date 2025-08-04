@@ -1,6 +1,8 @@
 import * as THREE from 'three/webgpu'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {Pane} from 'tweakpane'
+import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
+import {cameraProjectionMatrix, float, Fn, modelViewMatrix, positionGeometry, time, vec4} from "three/tsl";
 
 // Debug
 const pane = new Pane({title: 'Torch Flame 🔥'})
@@ -13,13 +15,60 @@ const canvas = document.getElementById('webgpu')
 const scene = new THREE.Scene()
 
 /**
- * Flame
+ * Flame Geometry
+ */
+let planes = []
+const leafCount = 10
+
+for (let i = 0; i < leafCount; i++) {
+    const plane = new THREE.BoxGeometry(0.1, 0.1, 0.1)
+    planes.push(plane)
+
+    const position = new THREE.Vector3()
+    position.x = (Math.random() - 0.5) * 0.75
+    position.y = (Math.random() - 0.5) * 0.75
+    position.z = (Math.random() - 0.5) * 0.75
+
+    plane.translate(position.x, position.y, position.z)
+}
+
+const bushGeometry = mergeGeometries(planes)
+
+/**
+ * Flame Material
  */
 
-const geometry = new THREE.BoxGeometry(4, 4, 4)
-const material = new THREE.MeshBasicMaterial({color: 0xffffff})
+const material = new THREE.MeshBasicNodeMaterial({
+    color: 0xffaa00,
+    emissive: 0xffaa00,
+})
 
-const mesh = new THREE.Mesh(geometry, material)
+material.vertexNode = Fn(() => {
+    let timeFactor = time.mul(0.1).modAssign(1.0).toVar()
+
+    const scale = float(2.0).mul(timeFactor.oneMinus())
+
+    let newPos = positionGeometry.mul(scale).toVar()
+
+    newPos.y.addAssign(timeFactor.mul(2.0))
+
+    return cameraProjectionMatrix.mul(modelViewMatrix).mul(vec4(newPos, 1.0))
+})()
+
+/**
+ * Flame Mesh
+ */
+const mesh = new THREE.InstancedMesh(bushGeometry, material, 5)
+
+for (let i = 0; i < mesh.count; i++) {
+    const matrix = new THREE.Matrix4()
+    const x = (Math.random() - 0.5) * 10
+    const y = (Math.random() - 0.5) * 10
+    const z = (Math.random() - 0.5) * 10
+    matrix.setPosition(x, y, z)
+    mesh.setMatrixAt(i, matrix)
+}
+
 scene.add(mesh)
 
 /**
