@@ -1,17 +1,13 @@
-import * as THREE from 'three/webgpu'
+import {
+    AmbientLight,
+    PerspectiveCamera,
+    Scene,
+    WebGPURenderer,
+} from 'three/webgpu'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {Pane} from 'tweakpane'
-import {
-    cameraProjectionMatrix,
-    float,
-    Fn,
-    modelViewMatrix,
-    positionGeometry,
-    range,
-    time, vec3,
-    vec4
-} from "three/tsl";
 import Stats from "three/addons/libs/stats.module.js";
+import {GLTFLoader} from "three/addons";
 
 // Debug
 const pane = new Pane({title: 'Torch Flame 🔥'})
@@ -25,67 +21,25 @@ document.body.appendChild(stats.dom)
  */
 
 const canvas = document.getElementById('webgpu')
-const scene = new THREE.Scene()
+const scene = new Scene()
+const ambiantLight = new AmbientLight(0xffffff, 10)
+scene.add(ambiantLight)
 
-/**
- * Flame Variables
- */
-const Flames = {}
-Flames.cubeCount = 10
-Flames.flameCount = 1000
-
-/**
- * Flame Geometry
- */
-const cubeGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1)
-
-/**
- * Flame Material
- */
-
-const flameMaterial = new THREE.MeshBasicNodeMaterial({
-    color: 0xffaa00,
+pane.addBinding(ambiantLight, 'intensity', {
+  label: 'Ambient Light Intensity',
+    min: 0,
+    max: 10,
+    step: 0.1
 })
 
 /**
- * Flame Mesh
+ * Mounted Torch Model
  */
-const mesh = new THREE.InstancedMesh(cubeGeometry, flameMaterial, Flames.cubeCount)
-
-for (let i = 0; i < Flames.cubeCount; i++) {
-    const matrix = new THREE.Matrix4()
-    const x = (Math.random() - 0.5) * 0.75
-    const y = (Math.random() - 0.5) * 0.75
-    const z = (Math.random() - 0.5) * 0.75
-
-    matrix.setPosition(x, y, z)
-    mesh.setMatrixAt(i, matrix)
-}
-
-scene.add(mesh)
-
-/**
- * ------------ Flame in TSL ------------
- */
-
-flameMaterial.vertexNode = Fn(() => {
-    const randomness = vec3(
-        range(-0.75, 0.75),
-        range(-0.75, 0.75),
-        range(-0.75, 0.75)
-    ).toConst()
-
-    let timeFactor = time.mul(0.1).toVar()
-
-    const scale = float(2.0).mul(timeFactor.mod(1.0).oneMinus())
-
-    let newPos = positionGeometry.add(randomness).mul(scale).toVar()
-
-    newPos.y.addAssign(timeFactor.mul(2.0))
-    newPos.y.modAssign(1.0)
-
-    return cameraProjectionMatrix.mul(modelViewMatrix).mul(vec4(newPos, 1.0))
-})().debug()
+const gltfLoader = new GLTFLoader()
+gltfLoader.load('wall_mounted_torch.glb', (glb) => {
+    console.log('glb', glb.scene.children[0])
+    scene.add(glb.scene.children[0])
+})
 
 /**
  * Sizes
@@ -110,7 +64,7 @@ window.addEventListener('resize', () =>
 /**
  * Camera
  */
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 200)
+const camera = new PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 200)
 camera.position.set(4, 2, 5)
 scene.add(camera)
 
@@ -120,7 +74,7 @@ controls.enableDamping = true
 /**
  * Renderer
  */
-const renderer = new THREE.WebGPURenderer({
+const renderer = new WebGPURenderer({
     canvas: canvas
 })
 renderer.setSize(sizes.width, sizes.height)
