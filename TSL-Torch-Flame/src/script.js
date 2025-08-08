@@ -78,11 +78,11 @@ gltfLoader.load('wall_mounted_torch.glb', (glb) => {
 /**
  * Torch Flame mesh
  */
-const flameGeometry = new PlaneGeometry()
+const flameGeometry = new PlaneGeometry(2, 2 , 2)
 const flameMaterial = new MeshBasicNodeMaterial()
 
 const flame = new Mesh(flameGeometry, flameMaterial)
-flame.position.set(0, 1.0, 0.1)
+flame.position.set(0, 1.2, 0.1)
 scene.add(flame)
 
 /**
