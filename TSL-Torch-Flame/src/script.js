@@ -1,6 +1,5 @@
 import {
     AmbientLight,
-    DoubleSide,
     Mesh,
     MeshBasicNodeMaterial,
     PerspectiveCamera,
@@ -14,16 +13,24 @@ import Stats from "three/addons/libs/stats.module.js";
 import {GLTFLoader} from "three/addons";
 import {
     abs,
+    cameraPosition,
+    cameraProjectionMatrix,
+    cameraViewMatrix,
     clamp,
+    cross,
     dot,
     float,
     floor,
     Fn,
     fract,
     length,
+    mat3,
     max,
     mix,
     mod,
+    modelWorldMatrix,
+    normalize,
+    positionLocal,
     pow,
     select,
     sin,
@@ -72,9 +79,7 @@ gltfLoader.load('wall_mounted_torch.glb', (glb) => {
  * Torch Flame mesh
  */
 const flameGeometry = new PlaneGeometry()
-const flameMaterial = new MeshBasicNodeMaterial({
-    side: DoubleSide
-})
+const flameMaterial = new MeshBasicNodeMaterial()
 
 const flame = new Mesh(flameGeometry, flameMaterial)
 flame.position.set(0, 1.0, 0.1)
@@ -83,6 +88,10 @@ scene.add(flame)
 /**
  * ------------ Flame in TSL ------------
  * Based off https://www.shadertoy.com/view/3t2yWz by tukigp
+ */
+
+/**
+ * Fragment Shader
  */
 
 const permute = Fn(([x]) => {
@@ -134,7 +143,7 @@ const snoise = Fn(([v]) => {
     return float(130.0).mul(dot(cornerWeight, gradientVector))
 })
 
-const flameShader = Fn(() => {
+const flameFragmentShader = Fn(() => {
     const FLAME_SIZE = float(2.2).toConst()
     const FLAME_WIDTH = float(1.3).toConst()
     const DISPLACEMENT_STRENGTH = float(0.3).toConst()
@@ -208,7 +217,32 @@ const flameShader = Fn(() => {
     return vec4(color, 1.0)
 })
 
-flameMaterial.fragmentNode = flameShader()
+flameMaterial.fragmentNode = flameFragmentShader()
+
+/**
+ * Fragment Shader
+ */
+
+const flameVertexShader = Fn(() => {
+    const worldPos = vec4(modelWorldMatrix.mul(vec4(0.0, 0.0, 0.0, 1.0))).toVar()
+
+    const toCameraDirX = cameraPosition.x.sub(worldPos.x)
+    const toCameraDirZ = cameraPosition.z.sub(worldPos.z)
+    const toCameraDir = normalize(vec3(toCameraDirX, 0.0, toCameraDirZ)).toVar()
+
+    const up = vec3(0.0, 1.0, 0.0).toConst()
+    const right = normalize(cross(up, toCameraDir)).toVar()
+    const forward = cross(right, up).toVar()
+
+    const billboardMatrix = mat3(right, up, forward).toVar()
+
+    const billboardPos = billboardMatrix.mul(positionLocal).toVar()
+    const worldPosition = worldPos.add(vec4(billboardPos, 0.0)).toVar()
+
+    return cameraProjectionMatrix.mul(cameraViewMatrix.mul(worldPosition))
+})
+
+flameMaterial.vertexNode = flameVertexShader()
 
 /**
  * Sizes
