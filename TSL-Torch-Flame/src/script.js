@@ -1,5 +1,7 @@
 import {
-    AmbientLight, Mesh,
+    AmbientLight,
+    DoubleSide,
+    Mesh,
     MeshBasicNodeMaterial,
     PerspectiveCamera,
     PlaneGeometry,
@@ -23,7 +25,6 @@ import {
     mix,
     mod,
     pow,
-    screenSize,
     select,
     sin,
     smoothstep,
@@ -63,7 +64,7 @@ pane.addBinding(ambiantLight, 'intensity', {
  */
 const gltfLoader = new GLTFLoader()
 gltfLoader.load('wall_mounted_torch.glb', (glb) => {
-    // scene.add(glb.scene.children[0])
+    scene.add(glb.scene.children[0])
 })
 
 
@@ -72,10 +73,11 @@ gltfLoader.load('wall_mounted_torch.glb', (glb) => {
  */
 const flameGeometry = new PlaneGeometry()
 const flameMaterial = new MeshBasicNodeMaterial({
-    transparent: true,
+    side: DoubleSide
 })
 
 const flame = new Mesh(flameGeometry, flameMaterial)
+flame.position.set(0, 1.0, 0.1)
 scene.add(flame)
 
 /**
@@ -122,10 +124,10 @@ const snoise = Fn(([v]) => {
     const gradientOffset = vec3(floor(gradientBase.add(0.5))).toConst()
     const gradientXY = vec3(gradientBase.sub(gradientOffset)).toConst()
 
-    cornerWeight.mulAssign(float(1.79284291400159).sub(float(0.85373472095314))
-        .mul(gradientXY.mul(gradientXY).mul(gradientHeight).mul(gradientHeight)))
+    cornerWeight.mulAssign(float(1.79284291400159).sub(float(0.85373472095314)
+        .mul(gradientXY.mul(gradientXY).add(gradientHeight.mul(gradientHeight)))))
 
-    let gradientVector = vec3(0).toVar()
+    let gradientVector = vec3().toVar()
     gradientVector.x.assign(gradientXY.x.mul(cellOffset0.x).add(gradientHeight.x.mul(cellOffset0.y)))
     gradientVector.yz.assign(gradientXY.yz.mul(cellOffset12.xz).add(gradientHeight.yz.mul(cellOffset12.yw)))
 
@@ -157,27 +159,17 @@ const flameShader = Fn(() => {
     const BACKGROUND_COLOR_MAX = vec3(1.0, 0.3, 0.0).toConst()
     const RIM_COLOR = vec3(1.0, 0.9, 0.0).toConst()
 
-    const FLICKER_SPEED = float(10.0).toConst()
-    const FLICKER_STRENGTH = float(0.08).toConst()
-    const GLOW_OFFSET = vec2(0.0, 0.1).toConst()
-    const GLOW_EXPONENT = float(4.0).toConst()
-    const GLOW_WIDTH = float(1.5).toConst()
-    const GLOW_SIZE = float(0.4).toConst()
-    const GLOW_STRENGTH = float(0.4).toConst()
-    const GLOW_COLOR = vec3(1.0, 0.8, 0.0).toConst()
-
     const uvCoord = uv().toVar()
-    const fragCoord = vec2(uvCoord.mul(screenSize)).toConst()
+    const fragCoord = vec2(uvCoord.mul(viewportSize)).toConst()
     const pixelWidth = abs(float(fragCoord.x).mul(float(viewportSize))).toConst()
 
     const aspectRatio = viewportSize.x.div(viewportSize.y).toConst()
     uvCoord.x.mulAssign(aspectRatio)
 
     let flamePos = vec2(uvCoord.sub(vec2(float(0.5).mul(aspectRatio), float(0.5)))).toVar()
-    let glowPos = vec2(flamePos).toVar()
 
     flamePos.mulAssign(FLAME_SIZE)
-    glowPos.x.mulAssign(FLAME_WIDTH)
+    flamePos.x.mulAssign(FLAME_WIDTH)
 
     const flameDisplacement = max(
         float(0.0),
@@ -211,15 +203,7 @@ const flameShader = Fn(() => {
 
     color.assign(mix(color, RIM_COLOR, lightColor))
 
-    const glowFlicker = float(1.0).add(snoise(vec2(time.mul(FLICKER_SPEED))).mul(FLICKER_STRENGTH)).toConst()
-    glowPos.addAssign(GLOW_OFFSET)
-    glowPos.x.mulAssign(GLOW_WIDTH)
-    glowPos.mulAssign(GLOW_SIZE)
-
-    const glowColor = vec3(GLOW_COLOR
-        .mul(pow(length(glowPos).oneMinus(), GLOW_EXPONENT)
-            .mul(GLOW_STRENGTH).mul(glowFlicker))).toConst()
-    color.addAssign(glowColor)
+    color.equal(vec3(0.0, 0.0, 0.0)).discard()
 
     return vec4(color, 1.0)
 })
