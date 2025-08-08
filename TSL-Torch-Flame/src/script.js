@@ -3,9 +3,14 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import {Pane} from 'tweakpane'
 import {mergeGeometries} from "three/addons/utils/BufferGeometryUtils.js";
 import {cameraProjectionMatrix, float, Fn, modelViewMatrix, positionGeometry, time, vec4} from "three/tsl";
+import Stats from "three/addons/libs/stats.module.js";
 
 // Debug
 const pane = new Pane({title: 'Torch Flame 🔥'})
+const stats = new Stats()
+stats.domElement.style.position = 'absolute'
+stats.domElement.style.top = '0px'
+document.body.appendChild(stats.dom)
 
 /**
  * Base
@@ -116,11 +121,15 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 const tick = () =>
 {
+    stats.begin()
+
     controls.update()
 
     renderer.renderAsync(scene, camera)
 
     window.requestAnimationFrame(tick)
+
+    stats.end()
 }
 
 tick()
